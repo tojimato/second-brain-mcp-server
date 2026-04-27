@@ -10,11 +10,11 @@ async function testVisual() {
         // Cleanup old test data
         await pool.query('DELETE FROM memories WHERE project_name = $1', [projectName]);
 
-        // 1. Create a concept definition
+        // 1. Create a concept definition with source
         console.log("Creating Test Memories...");
         const result1 = await pool.query(
-            `INSERT INTO memories (content, project_name, memory_type) VALUES ($1, $2, $3) RETURNING id`,
-            ["# Project Phoenix\n[[Project-Phoenix]] is our main initiative.", projectName, 'concept']
+            `INSERT INTO memories (content, project_name, memory_type, source) VALUES ($1, $2, $3, $4) RETURNING id`,
+            ["[[Project-Phoenix]] is our main initiative.", projectName, 'concept', 'concepts/phoenix.md']
         );
         const mem1Id = result1.rows[0].id;
         
@@ -23,10 +23,10 @@ async function testVisual() {
             [mem1Id, 'Project-Phoenix']
         );
 
-        // 2. Create a linked note
+        // 2. Create a linked note with source
         const result2 = await pool.query(
-            `INSERT INTO memories (content, project_name, memory_type) VALUES ($1, $2, $3) RETURNING id`,
-            ["We need to discuss [[Project-Phoenix]] budget.", projectName, 'note']
+            `INSERT INTO memories (content, project_name, memory_type, source) VALUES ($1, $2, $3, $4) RETURNING id`,
+            ["We need to discuss [[Project-Phoenix]] budget.", projectName, 'note', 'notes/budget.md']
         );
         const mem2Id = result2.rows[0].id;
 
@@ -35,17 +35,17 @@ async function testVisual() {
             [mem2Id, 'Project-Phoenix']
         );
 
-        // 3. Create a summary
+        // 3. Create a summary with source
         await pool.query(
-            `INSERT INTO memories (content, project_name, memory_type) VALUES ($1, $2, $3)`,
-            ["# Monthly Summary\nEverything is on track.", projectName, 'summary']
+            `INSERT INTO memories (content, project_name, memory_type, source) VALUES ($1, $2, $3, $4)`,
+            ["Everything is on track.", projectName, 'summary', 'summaries/status.md']
         );
 
         // 4. Test the visual tool logic (manual execution of updated logic)
         console.log("Generating Mermaid...");
         
         const memoriesResult = await pool.query(
-            `SELECT id, content, memory_type FROM memories WHERE project_name = $1`,
+            `SELECT id, source, memory_type, content FROM memories WHERE project_name = $1`,
             [projectName]
         );
         const linksResult = await pool.query(
@@ -60,11 +60,7 @@ async function testVisual() {
         const links = linksResult.rows;
 
         const sanitizeLabel = (text: string) => {
-            return text.substring(0, 50)
-                .replace(/^#+\s*/, '')
-                .replace(/[\n\r]/g, " ")
-                .replace(/"/g, "'")
-                .trim();
+            return text.replace(/[\n\r]/g, " ").replace(/"/g, "'").trim();
         };
 
         const idMap = new Map<string, string>();
@@ -85,8 +81,12 @@ async function testVisual() {
             mermaid += `\n  subgraph ${type.toUpperCase()}\n`;
             items.forEach(m => {
                 const shortId = idMap.get(m.id);
-                const label = sanitizeLabel(m.content);
-                const fullLabel = `"${label}${m.content.length > 50 ? '...' : ''}"`;
+                let label = m.source;
+                if (!label) {
+                    const firstLine = m.content.split('\n')[0].replace(/^#+\s*/, '').trim();
+                    label = firstLine.substring(0, 30) || `Memory_${shortId}`;
+                }
+                const fullLabel = `"${sanitizeLabel(label)}"`;
                 let shape = `[${fullLabel}]`;
                 if (type === 'summary') shape = `{{${fullLabel}}}`;
                 if (type === 'sop') shape = `[[${fullLabel}]]`;
@@ -100,7 +100,7 @@ async function testVisual() {
         links.forEach(l => concepts.add(l.target_concept));
 
         if (concepts.size > 0) {
-            mermaid += `\n  subgraph EXTERNAL_CONCEPTS\n`;
+            mermaid += `\n  subgraph CONCEPTS\n`;
             concepts.forEach(c => {
                 const conceptId = `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
                 mermaid += `    ${conceptId}(("${c}"))\n`;
@@ -124,9 +124,9 @@ async function testVisual() {
         if (byType['concept']) mermaid += `  class ${byType['concept'].map(m => idMap.get(m.id)).join(',')} concept;\n`;
         if (concepts.size > 0) mermaid += `  class ${Array.from(concepts).map(c => `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(',')} extConcept;\n`;
 
-        console.log("\n--- UPDATED MERMAID OUTPUT ---\n");
+        console.log("\n--- FILENAME MERMAID OUTPUT ---\n");
         console.log(mermaid);
-        console.log("\n------------------------------\n");
+        console.log("\n-------------------------------\n");
 
     } catch (err) {
         console.error("Test error:", err);
