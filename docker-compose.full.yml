@@ -18,13 +18,8 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-
-  ollama-pull-model:
-    image: curlimages/curl:latest
-    container_name: second-brain-ollama-pull
-    depends_on:
-      - ollama
-    entrypoint: [ "sh", "-c", "sleep 10 && curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"nomic-embed-text\"}'" ]
+    entrypoint: /bin/sh
+    command: -c "ollama serve & sleep 10 && ollama pull nomic-embed-text && wait"
 
 volumes:
   pgdata:

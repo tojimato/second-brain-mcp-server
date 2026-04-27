@@ -40,7 +40,7 @@ Bu proje, projeleriniz için kalıcı ve semantik olarak aranabilir bir hafıza 
    ```
 
    > [!NOTE]
-   > `docker-compose.full.yml` kullanıldığında, `ollama-pull-model` servisi `nomic-embed-text` modelini otomatik olarak indirmeye çalışacaktır. Bu işlem internet hızınıza bağlı olarak birkaç dakika sürebilir.
+   > `docker-compose.full.yml` kullanıldığında, `ollama` servisi `nomic-embed-text` modelini başlangıçta otomatik olarak indirmeye çalışacaktır. Bu işlem internet hızınıza bağlı olarak birkaç dakika sürebilir.
 
 4. **Ollama Modelini Hazırlayın:**
    Embedding için kullanılacak modeli indirin (Varsayılan: `nomic-embed-text`):
