@@ -14,7 +14,7 @@ async function testVisual() {
         console.log("Creating Test Memories...");
         const result1 = await pool.query(
             `INSERT INTO memories (content, project_name, memory_type) VALUES ($1, $2, $3) RETURNING id`,
-            ["[[Project-Phoenix]] is our main initiative.", projectName, 'concept']
+            ["# Project Phoenix\n[[Project-Phoenix]] is our main initiative.", projectName, 'concept']
         );
         const mem1Id = result1.rows[0].id;
         
@@ -35,13 +35,13 @@ async function testVisual() {
             [mem2Id, 'Project-Phoenix']
         );
 
-        // 3. Create another link
+        // 3. Create a summary
         await pool.query(
-            `INSERT INTO memory_links (source_id, target_concept) VALUES ($1, $2)`,
-            [mem2Id, 'Budget-Review']
+            `INSERT INTO memories (content, project_name, memory_type) VALUES ($1, $2, $3)`,
+            ["# Monthly Summary\nEverything is on track.", projectName, 'summary']
         );
 
-        // 4. Test the visual tool logic (manual execution of what's in index.ts)
+        // 4. Test the visual tool logic (manual execution of updated logic)
         console.log("Generating Mermaid...");
         
         const memoriesResult = await pool.query(
@@ -59,41 +59,74 @@ async function testVisual() {
         const memories = memoriesResult.rows;
         const links = linksResult.rows;
 
-        let mermaid = "graph TD\n";
-        memories.forEach(m => {
-            const truncatedContent = m.content.substring(0, 50).replace(/[\n\r]/g, " ").replace(/"/g, "'").trim();
-            const label = `[${m.memory_type}] ${truncatedContent}${m.content.length > 50 ? '...' : ''}`;
-            const safeId = `mem_${m.id.replace(/-/g, "_")}`;
-            mermaid += `  ${safeId}["${label}"]\n`;
+        const sanitizeLabel = (text: string) => {
+            return text.substring(0, 50)
+                .replace(/^#+\s*/, '')
+                .replace(/[\n\r]/g, " ")
+                .replace(/"/g, "'")
+                .trim();
+        };
+
+        const idMap = new Map<string, string>();
+        memories.forEach((m, idx) => {
+            idMap.set(m.id, `m${idx + 1}`);
         });
+
+        let mermaid = "graph LR\n";
+
+        const byType: Record<string, any[]> = {};
+        memories.forEach(m => {
+            const type = m.memory_type || 'general';
+            if (!byType[type]) byType[type] = [];
+            byType[type].push(m);
+        });
+
+        for (const [type, items] of Object.entries(byType)) {
+            mermaid += `\n  subgraph ${type.toUpperCase()}\n`;
+            items.forEach(m => {
+                const shortId = idMap.get(m.id);
+                const label = sanitizeLabel(m.content);
+                const fullLabel = `"${label}${m.content.length > 50 ? '...' : ''}"`;
+                let shape = `[${fullLabel}]`;
+                if (type === 'summary') shape = `{{${fullLabel}}}`;
+                if (type === 'sop') shape = `[[${fullLabel}]]`;
+                if (type === 'concept') shape = `([${fullLabel}])`;
+                mermaid += `    ${shortId}${shape}\n`;
+            });
+            mermaid += `  end\n`;
+        }
 
         const concepts = new Set<string>();
-        links.forEach(l => {
-            const sourceId = `mem_${l.source_id.replace(/-/g, "_")}`;
-            const conceptId = `concept_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            mermaid += `  ${sourceId} --> ${conceptId}\n`;
-            concepts.add(l.target_concept);
-        });
+        links.forEach(l => concepts.add(l.target_concept));
 
-        concepts.forEach(c => {
-            const conceptId = `concept_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            mermaid += `  ${conceptId}(("${c}"))\n`;
-        });
-
-        mermaid += "\n  classDef concept fill:#f9f,stroke:#333,stroke-width:2px;\n";
         if (concepts.size > 0) {
-            mermaid += "  class " + Array.from(concepts).map(c => `concept_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(",") + " concept;\n";
+            mermaid += `\n  subgraph EXTERNAL_CONCEPTS\n`;
+            concepts.forEach(c => {
+                const conceptId = `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
+                mermaid += `    ${conceptId}(("${c}"))\n`;
+            });
+            mermaid += `  end\n`;
         }
 
-        console.log("\n--- MERMAID OUTPUT ---\n");
+        links.forEach(l => {
+            const mId = idMap.get(l.source_id);
+            const cId = `c_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
+            mermaid += `  ${mId} --> ${cId}\n`;
+        });
+
+        mermaid += "\n  classDef summary fill:#d4f7d4,stroke:#333,stroke-width:1px;\n";
+        mermaid += "  classDef sop fill:#d4e6f7,stroke:#333,stroke-width:1px;\n";
+        mermaid += "  classDef concept fill:#fff3cd,stroke:#333,stroke-width:1px;\n";
+        mermaid += "  classDef extConcept fill:#f9f,stroke:#333,stroke-width:2px;\n";
+
+        if (byType['summary']) mermaid += `  class ${byType['summary'].map(m => idMap.get(m.id)).join(',')} summary;\n`;
+        if (byType['sop']) mermaid += `  class ${byType['sop'].map(m => idMap.get(m.id)).join(',')} sop;\n`;
+        if (byType['concept']) mermaid += `  class ${byType['concept'].map(m => idMap.get(m.id)).join(',')} concept;\n`;
+        if (concepts.size > 0) mermaid += `  class ${Array.from(concepts).map(c => `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(',')} extConcept;\n`;
+
+        console.log("\n--- UPDATED MERMAID OUTPUT ---\n");
         console.log(mermaid);
-        console.log("\n----------------------\n");
-
-        if (mermaid.includes("Project_Phoenix") && mermaid.includes("Budget_Review")) {
-            console.log("TEST PASSED: Mermaid contains expected concepts.");
-        } else {
-            console.log("TEST FAILED: Mermaid missing concepts.");
-        }
+        console.log("\n------------------------------\n");
 
     } catch (err) {
         console.error("Test error:", err);

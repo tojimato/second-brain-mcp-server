@@ -54,39 +54,79 @@ export function registerGraphTools(server: McpServer) {
             };
         }
 
-        let mermaid = "graph TD\n";
-
-        // Add nodes for memories
-        memories.forEach(m => {
-            const truncatedContent = m.content.substring(0, 50)
+        // Helper to sanitize labels
+        const sanitizeLabel = (text: string) => {
+            return text.substring(0, 50)
+                .replace(/^#+\s*/, '') // Remove markdown headers
                 .replace(/[\n\r]/g, " ")
                 .replace(/"/g, "'")
                 .trim();
-            const label = `[${m.memory_type}] ${truncatedContent}${m.content.length > 50 ? '...' : ''}`;
-            const safeId = `mem_${m.id.replace(/-/g, "_")}`;
-            mermaid += `  ${safeId}["${label}"]\n`;
+        };
+
+        // Create ID mapping for memories to reduce Mermaid code noise
+        const idMap = new Map<string, string>();
+        memories.forEach((m, idx) => {
+            idMap.set(m.id, `m${idx + 1}`);
         });
 
-        // Add edges and concept nodes
-        const concepts = new Set<string>();
-        links.forEach(l => {
-            const sourceId = `mem_${l.source_id.replace(/-/g, "_")}`;
-            const conceptId = `concept_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            mermaid += `  ${sourceId} --> ${conceptId}\n`;
-            concepts.add(l.target_concept);
+        let mermaid = "graph LR\n";
+
+        // Group by type using subgraphs
+        const byType: Record<string, any[]> = {};
+        memories.forEach(m => {
+            const type = m.memory_type || 'general';
+            if (!byType[type]) byType[type] = [];
+            byType[type].push(m);
         });
 
-        // Add style/labels for concepts
-        concepts.forEach(c => {
-            const conceptId = `concept_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            mermaid += `  ${conceptId}(("${c}"))\n`;
-        });
-
-        // Add some basic styling
-        mermaid += "\n  classDef concept fill:#f9f,stroke:#333,stroke-width:2px;\n";
-        if (concepts.size > 0) {
-            mermaid += "  class " + Array.from(concepts).map(c => `concept_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(",") + " concept;\n";
+        for (const [type, items] of Object.entries(byType)) {
+            mermaid += `\n  subgraph ${type.toUpperCase()}\n`;
+            items.forEach(m => {
+                const shortId = idMap.get(m.id);
+                const label = sanitizeLabel(m.content);
+                const fullLabel = `"${label}${m.content.length > 50 ? '...' : ''}"`;
+                
+                // Different shapes based on type
+                let shape = `[${fullLabel}]`; // default
+                if (type === 'summary') shape = `{{${fullLabel}}}`;
+                if (type === 'sop') shape = `[[${fullLabel}]]`;
+                if (type === 'concept') shape = `([${fullLabel}])`;
+                
+                mermaid += `    ${shortId}${shape}\n`;
+            });
+            mermaid += `  end\n`;
         }
+
+        // Add external concepts (from links) in their own subgraph
+        const concepts = new Set<string>();
+        links.forEach(l => concepts.add(l.target_concept));
+
+        if (concepts.size > 0) {
+            mermaid += `\n  subgraph EXTERNAL_CONCEPTS\n`;
+            concepts.forEach(c => {
+                const conceptId = `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
+                mermaid += `    ${conceptId}(("${c}"))\n`;
+            });
+            mermaid += `  end\n`;
+        }
+
+        // Connections
+        links.forEach(l => {
+            const mId = idMap.get(l.source_id);
+            const cId = `c_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
+            mermaid += `  ${mId} --> ${cId}\n`;
+        });
+
+        // Styling
+        mermaid += "\n  classDef summary fill:#d4f7d4,stroke:#333,stroke-width:1px;\n";
+        mermaid += "  classDef sop fill:#d4e6f7,stroke:#333,stroke-width:1px;\n";
+        mermaid += "  classDef concept fill:#fff3cd,stroke:#333,stroke-width:1px;\n";
+        mermaid += "  classDef extConcept fill:#f9f,stroke:#333,stroke-width:2px;\n";
+
+        if (byType['summary']) mermaid += `  class ${byType['summary'].map(m => idMap.get(m.id)).join(',')} summary;\n`;
+        if (byType['sop']) mermaid += `  class ${byType['sop'].map(m => idMap.get(m.id)).join(',')} sop;\n`;
+        if (byType['concept']) mermaid += `  class ${byType['concept'].map(m => idMap.get(m.id)).join(',')} concept;\n`;
+        if (concepts.size > 0) mermaid += `  class ${Array.from(concepts).map(c => `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(',')} extConcept;\n`;
 
         return {
             content: [{ type: "text", text: mermaid }]
