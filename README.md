@@ -1,56 +1,57 @@
 # Second Brain MCP Server
 
-Bu proje, projeleriniz için kalıcı ve semantik olarak aranabilir bir hafıza (Second Brain) sağlayan bir Model Context Protocol (MCP) sunucusudur. Ollama kullanarak embedding üretir ve PostgreSQL (pgvector) üzerinde depolar.
+A Model Context Protocol (MCP) server that provides a persistent, semantically searchable memory (Second Brain) for your projects. It generates embeddings using Ollama and stores them in PostgreSQL with `pgvector` support.
 
-## Özellikler
+## Features
 
-- **Semantik Arama:** Kaydedilen bilgileri anlamlarına göre arayın.
-- **Proje Bazlı Hafıza:** Farklı projeler için ayrı hafıza alanları oluşturun.
-- **Dosya İçe Aktarma:** Yerel dosyaları doğrudan sisteme öğretin.
-- **Durable Knowledge:** Kararlar, mimari notlar ve SOP'lar için kalıcı depolama.
+- **Semantic Search:** Search stored knowledge based on meaning, not just keywords.
+- **Bidirectional Linking:** Automatic extraction of `[[concept]]` references to build a knowledge graph.
+- **Intelligent Chunking:** Automatically splits large files into manageable chunks to optimize context window and token usage.
+- **High Performance:** Uses HNSW indexing for millisecond-level vector similarity retrieval.
+- **Traceability:** Tracks the origin of every memory (source file, URL, etc.).
 
-## Ön Gereksinimler
+## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18+)
-- [Docker](https://www.docker.com/) (Veritabanı için)
-- [Ollama](https://ollama.ai/) (Embedding üretimi için)
+- [Docker](https://www.docker.com/) (For database)
+- [Ollama](https://ollama.ai/) (For embedding generation)
 
-## Kurulum
+## Installation
 
-1. **Repoyu klonlayın:**
+1. **Clone the repository:**
    ```bash
    git clone <repo-url>
    cd second-brain-mcp-server
    ```
 
-2. **Bağımlılıkları yükleyin:**
+2. **Install dependencies:**
    ```bash
    npm install
    ```
 
-3. **Veritabanını başlatın:**
-   Sadece veritabanını (pgvector) başlatmak için:
+3. **Start the Database:**
+   
+   To start only the database (pgvector):
    ```bash
    docker-compose up -d
    ```
 
-   **Alternatif:** Hem veritabanını hem de Ollama'yı (modeli otomatik çekerek) başlatmak için:
+   **Alternative:** To start both the Database and Ollama (with automatic model pull):
    ```bash
    docker-compose -f docker-compose.full.yml up -d
    ```
-
    > [!NOTE]
-   > `docker-compose.full.yml` kullanıldığında, `ollama` servisi `nomic-embed-text` modelini başlangıçta otomatik olarak indirmeye çalışacaktır. Bu işlem internet hızınıza bağlı olarak birkaç dakika sürebilir.
+   > When using `docker-compose.full.yml`, the `ollama` service will automatically pull the `nomic-embed-text` model. This may take a few minutes depending on your internet speed.
 
-4. **Ollama Modelini Hazırlayın:**
-   Embedding için kullanılacak modeli indirin (Varsayılan: `nomic-embed-text`):
+4. **Prepare Ollama Model (Manual):**
+   If not using the full docker setup, pull the embedding model manually:
    ```bash
    ollama pull nomic-embed-text
    ```
 
-## Yapılandırma (.env)
+## Configuration (.env)
 
-`.env.example` dosyasını `.env` olarak kopyalayın ve ayarlarınızı yapın:
+Copy `.env.example` to `.env` and adjust the settings:
 
 ```env
 DB_USER=postgres
@@ -62,54 +63,42 @@ OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 OLLAMA_HOST=http://localhost:11434
 ```
 
-## Kullanım
+## Usage
 
-### Sunucuyu Başlatma ve Test
+### Build and Start
 
-Projeyi derleyin ve başlatın:
+Build the project and start the server:
 
 ```bash
 npm run build
 npm start
 ```
 
-Mantıksal testi çalıştırmak için:
+To run logical tests:
 ```bash
 npm run test
+npm run test:graph
+npm run test:perf
 ```
 
-### MCP Araçları (Tools)
+### MCP Tools
 
-Bu sunucu aşağıdaki araçları sağlar:
+1.  **`create_memory`**: Stores knowledge. Large content is automatically chunked.
+2.  **`search_memory`**: Semantic search with optional `min_similarity` threshold.
+3.  **`ingest_file`**: Reads a local file and ingests it into the brain.
+4.  **`get_recent_context`**: Fetches the most recently added records.
+5.  **`get_graph_connections`**: Finds "backlinks" for a specific concept using the bidirectional links table.
 
-1.  **`create_memory`**: Yeni bir bilgi kaydeder.
-    - `project_name`: Proje adı.
-    - `content`: Kaydedilecek metin.
-    - `memory_type`: (Opsiyonel) 'architecture', 'decision', 'sop', vb.
+### Claude Desktop Integration
 
-2.  **`search_memory`**: Kayıtlı bilgiler arasında semantik arama yapar.
-    - `project_name`: Hangi projede aranacağı.
-    - `query`: Arama sorgusu.
-    - `limit`: (Opsiyonel) Dönecek sonuç sayısı.
-
-3.  **`ingest_file`**: Yerel bir dosyayı okur ve hafızaya ekler.
-    - `project_name`: Hedef proje.
-    - `file_path`: Dosyanın tam yolu.
-
-4.  **`get_recent_context`**: Bir projedeki son eklenen kayıtları getirir.
-
-5.  **`get_graph_connections`**: Belirli bir konsepte yapılan açık referansları ([[concept]]) ve "backlink"leri bulur. Çift yönlü bağlantı (bidirectional linking) sağlar.
-
-### Claude Desktop Entegrasyonu
-
-Claude Desktop'ta kullanmak için `claude_desktop_config.json` dosyanıza şu eklemeyi yapın:
+Add the following to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "second-brain": {
       "command": "node",
-      "args": ["C:/yol/to/second-brain-mcp-server/build/index.js"],
+      "args": ["C:/path/to/second-brain-mcp-server/build/index.js"],
       "env": {
         "DB_USER": "postgres",
         "DB_PASSWORD": "password",
@@ -124,9 +113,32 @@ Claude Desktop'ta kullanmak için `claude_desktop_config.json` dosyanıza şu ek
 }
 ```
 
-## Geliştirme
+## Agent Configuration (System Prompt)
 
-Değişiklik yaptıktan sonra tekrar build almayı unutmayın:
+For the best experience, configure your AI Agent with the following system prompt:
+
+```markdown
+# Persistent Second Brain Agent (MCP Edition)
+
+You are the Persistent Second Brain Agent, operating through the MCP server `mcp-second-brain`.
+
+## CORE PRINCIPLES
+- **Source of Truth:** The vector database (PostgreSQL) accessed via MCP tools.
+- **Semantic Retrieval:** Always use `search_memory` before answering.
+- **Bidirectional Linking:** Use `[[concept-name]]` syntax. The system automatically indexes these into a graph.
+
+## OPERATIONAL MODES
+1. **BOOTSTRAP MODE:** Migrate existing files to the database using `ingest_file`.
+2. **QUERY MODE:** Answer using `search_memory` and `get_graph_connections`.
+3. **INGEST MODE:** Save new information using `create_memory`.
+
+## INITIALIZATION
+Upon startup: "Second Brain initialized and ready via MCP (Bidirectional Graph active)."
+```
+
+## Development
+
+Remember to rebuild after making changes:
 ```bash
 npm run build
 ```
