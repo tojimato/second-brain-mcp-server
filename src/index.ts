@@ -183,13 +183,10 @@ server.registerTool("get_graph_connections", {
 });
 
 async function main() {
-    console.error("Initializing Second Brain database...");
     await initDb();
     
-    console.error("Starting MCP Server over Stdio...");
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error("MCP Second Brain Server is running.");
 }
 
 main().catch(err => {

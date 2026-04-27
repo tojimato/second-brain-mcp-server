@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
 
+process.env.DOTENV_QUIET = 'true';
 dotenv.config();
 
 export const pool = new Pool({
@@ -37,7 +38,6 @@ export async function initDb() {
 
             CREATE INDEX IF NOT EXISTS memories_embedding_idx ON memories USING hnsw (embedding vector_cosine_ops);
         `);
-        console.error("Database initialized with vector extension, memories table, links table, and HNSW index.");
     } catch (err) {
         console.error("Failed to initialize database:", err);
         throw err;
