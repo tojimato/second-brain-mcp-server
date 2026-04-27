@@ -80,15 +80,15 @@ export function registerGraphTools(server: McpServer) {
         const idMap = new Map<string, string>();
         const conceptToNodeMap = new Map<string, string>();
         const consolidatedNodes: any[] = [];
-        
+
         Object.values(groups).forEach((g, idx) => {
             const label = cleanLabel(g.source);
             const safeSource = label.replace(/[^a-zA-Z0-9]/g, "_");
             const nodeId = `f${idx + 1}_${safeSource}`;
-            
+
             consolidatedNodes.push({ nodeId, source: label, type: g.type });
             g.originalIds.forEach(id => idMap.set(id, nodeId));
-            
+
             // Map the concept name (slugified and original) to this node
             conceptToNodeMap.set(label.toLowerCase(), nodeId);
             conceptToNodeMap.set(g.source.toLowerCase(), nodeId);
@@ -107,73 +107,50 @@ export function registerGraphTools(server: McpServer) {
             mermaid += `\n  subgraph ${type.toUpperCase()}\n`;
             nodes.forEach(n => {
                 const fullLabel = `"${n.source}"`;
-                
+
                 // Different shapes based on type
                 let shape = `[${fullLabel}]`; // default
                 if (type === 'summary') shape = `{{${fullLabel}}}`;
                 if (type === 'sop') shape = `[[${fullLabel}]]`;
                 if (type === 'concept') shape = `([${fullLabel}])`;
-                
+
                 mermaid += `    ${n.nodeId}${shape}\n`;
             });
             mermaid += `  end\n`;
         }
 
-        // 4. Find truly external concepts (those not matching any file node)
-        const externalConcepts = new Set<string>();
-        links.forEach(l => {
-            const target = l.target_concept.toLowerCase();
-            if (!conceptToNodeMap.has(target)) {
-                externalConcepts.add(l.target_concept);
-            }
-        });
-
-        if (externalConcepts.size > 0) {
-            mermaid += `\n  subgraph CONCEPTS\n`;
-            externalConcepts.forEach(c => {
-                const conceptId = `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
-                mermaid += `    ${conceptId}(("${c}"))\n`;
-            });
-            mermaid += `  end\n`;
-        }
-
-        // 5. Connections (Consolidated unique edges)
+        // 4. Connections (Consolidated unique edges - Only between existing file nodes)
         const drawnEdges = new Set<string>();
         links.forEach(l => {
             const mNodeId = idMap.get(l.source_id);
             const target = l.target_concept.toLowerCase();
-            
-            // Determine target node ID: either a matched file node or an external concept node
-            let tNodeId = conceptToNodeMap.get(target);
-            if (!tNodeId) {
-                tNodeId = `c_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            }
 
-            const edgeKey = `${mNodeId}-->${tNodeId}`;
-            
-            if (mNodeId && tNodeId && mNodeId !== tNodeId && !drawnEdges.has(edgeKey)) {
-                mermaid += `  ${mNodeId} --> ${tNodeId}\n`;
-                drawnEdges.add(edgeKey);
+            // Only draw link if the target concept matches an existing file node
+            const tNodeId = conceptToNodeMap.get(target);
+
+            if (mNodeId && tNodeId && mNodeId !== tNodeId) {
+                const edgeKey = `${mNodeId}-->${tNodeId}`;
+                if (!drawnEdges.has(edgeKey)) {
+                    mermaid += `  ${mNodeId} --> ${tNodeId}\n`;
+                    drawnEdges.add(edgeKey);
+                }
             }
         });
 
-        // 6. Styling
+        // 5. Styling
         mermaid += "\n  classDef summary fill:#d4f7d4,stroke:#333,stroke-width:1px;\n";
         mermaid += "  classDef sop fill:#d4e6f7,stroke:#333,stroke-width:1px;\n";
         mermaid += "  classDef concept fill:#fff3cd,stroke:#333,stroke-width:1px;\n";
-        mermaid += "  classDef extConcept fill:#f9f,stroke:#333,stroke-width:2px;\n";
 
         if (byType['summary']) mermaid += `  class ${byType['summary'].map(n => n.nodeId).join(',')} summary;\n`;
         if (byType['sop']) mermaid += `  class ${byType['sop'].map(n => n.nodeId).join(',')} sop;\n`;
         if (byType['concept']) mermaid += `  class ${byType['concept'].map(n => n.nodeId).join(',')} concept;\n`;
-        if (externalConcepts.size > 0) {
-            mermaid += `  class ${Array.from(externalConcepts).map(c => `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(',')} extConcept;\n`;
-        }
 
         return {
             content: [{ type: "text", text: mermaid }]
         };
     });
+
 
 
 
