@@ -54,6 +54,15 @@ export function registerGraphTools(server: McpServer) {
             };
         }
 
+        // Helper to clean labels (remove extensions and sanitize)
+        const cleanLabel = (text: string) => {
+            return text
+                .replace(/\.(md|json|txt|pdf)$/i, '')
+                .replace(/[\n\r]/g, " ")
+                .replace(/"/g, "'")
+                .trim();
+        };
+
         // 1. Group memories by source and type to consolidate chunks
         const groups: Record<string, { source: string, type: string, originalIds: string[] }> = {};
         memories.forEach(m => {
@@ -67,25 +76,25 @@ export function registerGraphTools(server: McpServer) {
         });
 
         // 2. Create mapping from original UUID to a consolidated node ID
+        // AND mapping from concept name to node ID (for merging)
         const idMap = new Map<string, string>();
+        const conceptToNodeMap = new Map<string, string>();
         const consolidatedNodes: any[] = [];
-
+        
         Object.values(groups).forEach((g, idx) => {
-            const safeSource = g.source.replace(/[^a-zA-Z0-9]/g, "_");
+            const label = cleanLabel(g.source);
+            const safeSource = label.replace(/[^a-zA-Z0-9]/g, "_");
             const nodeId = `f${idx + 1}_${safeSource}`;
-            consolidatedNodes.push({ nodeId, source: g.source, type: g.type });
+            
+            consolidatedNodes.push({ nodeId, source: label, type: g.type });
             g.originalIds.forEach(id => idMap.set(id, nodeId));
+            
+            // Map the concept name (slugified and original) to this node
+            conceptToNodeMap.set(label.toLowerCase(), nodeId);
+            conceptToNodeMap.set(g.source.toLowerCase(), nodeId);
         });
 
         let mermaid = "graph LR\n";
-
-        // Helper to sanitize labels
-        const sanitizeLabel = (text: string) => {
-            return text
-                .replace(/[\n\r]/g, " ")
-                .replace(/"/g, "'")
-                .trim();
-        };
 
         // 3. Group by type using subgraphs
         const byType: Record<string, any[]> = {};
@@ -97,27 +106,31 @@ export function registerGraphTools(server: McpServer) {
         for (const [type, nodes] of Object.entries(byType)) {
             mermaid += `\n  subgraph ${type.toUpperCase()}\n`;
             nodes.forEach(n => {
-                const label = sanitizeLabel(n.source);
-                const fullLabel = `"${label}"`;
-
+                const fullLabel = `"${n.source}"`;
+                
                 // Different shapes based on type
                 let shape = `[${fullLabel}]`; // default
                 if (type === 'summary') shape = `{{${fullLabel}}}`;
                 if (type === 'sop') shape = `[[${fullLabel}]]`;
                 if (type === 'concept') shape = `([${fullLabel}])`;
-
+                
                 mermaid += `    ${n.nodeId}${shape}\n`;
             });
             mermaid += `  end\n`;
         }
 
-        // 4. Add concepts from links
-        const concepts = new Set<string>();
-        links.forEach(l => concepts.add(l.target_concept));
+        // 4. Find truly external concepts (those not matching any file node)
+        const externalConcepts = new Set<string>();
+        links.forEach(l => {
+            const target = l.target_concept.toLowerCase();
+            if (!conceptToNodeMap.has(target)) {
+                externalConcepts.add(l.target_concept);
+            }
+        });
 
-        if (concepts.size > 0) {
+        if (externalConcepts.size > 0) {
             mermaid += `\n  subgraph CONCEPTS\n`;
-            concepts.forEach(c => {
+            externalConcepts.forEach(c => {
                 const conceptId = `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`;
                 mermaid += `    ${conceptId}(("${c}"))\n`;
             });
@@ -128,11 +141,18 @@ export function registerGraphTools(server: McpServer) {
         const drawnEdges = new Set<string>();
         links.forEach(l => {
             const mNodeId = idMap.get(l.source_id);
-            const cNodeId = `c_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
-            const edgeKey = `${mNodeId}-->${cNodeId}`;
+            const target = l.target_concept.toLowerCase();
+            
+            // Determine target node ID: either a matched file node or an external concept node
+            let tNodeId = conceptToNodeMap.get(target);
+            if (!tNodeId) {
+                tNodeId = `c_${l.target_concept.replace(/[^a-zA-Z0-9]/g, "_")}`;
+            }
 
-            if (mNodeId && !drawnEdges.has(edgeKey)) {
-                mermaid += `  ${mNodeId} --> ${cNodeId}\n`;
+            const edgeKey = `${mNodeId}-->${tNodeId}`;
+            
+            if (mNodeId && tNodeId && mNodeId !== tNodeId && !drawnEdges.has(edgeKey)) {
+                mermaid += `  ${mNodeId} --> ${tNodeId}\n`;
                 drawnEdges.add(edgeKey);
             }
         });
@@ -146,12 +166,15 @@ export function registerGraphTools(server: McpServer) {
         if (byType['summary']) mermaid += `  class ${byType['summary'].map(n => n.nodeId).join(',')} summary;\n`;
         if (byType['sop']) mermaid += `  class ${byType['sop'].map(n => n.nodeId).join(',')} sop;\n`;
         if (byType['concept']) mermaid += `  class ${byType['concept'].map(n => n.nodeId).join(',')} concept;\n`;
-        if (concepts.size > 0) mermaid += `  class ${Array.from(concepts).map(c => `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(',')} extConcept;\n`;
+        if (externalConcepts.size > 0) {
+            mermaid += `  class ${Array.from(externalConcepts).map(c => `c_${c.replace(/[^a-zA-Z0-9]/g, "_")}`).join(',')} extConcept;\n`;
+        }
 
         return {
             content: [{ type: "text", text: mermaid }]
         };
     });
+
 
 
 
