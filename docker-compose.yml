@@ -1,0 +1,15 @@
+services:
+  db:
+    image: ankane/pgvector:latest
+    container_name: second-brain-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: second_brain
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
