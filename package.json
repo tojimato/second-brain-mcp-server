@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
-    "test": "npx ts-node src/test_logic.ts"
+    "test": "npx ts-node src/test_logic.ts",
+    "test:graph": "npx ts-node src/test_graph.ts",
+    "test:perf": "npx ts-node src/test_performance.ts"
   },
   "keywords": [],
   "author": "",

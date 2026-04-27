@@ -23,11 +23,21 @@ export async function initDb() {
                 embedding vector(768),
                 project_name VARCHAR(255) NOT NULL,
                 memory_type VARCHAR(50),
+                source TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS memory_links (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                source_id UUID REFERENCES memories(id) ON DELETE CASCADE,
+                target_concept VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS memories_embedding_idx ON memories USING hnsw (embedding vector_cosine_ops);
         `);
-        console.log("Database initialized with vector extension and memories table.");
+        console.log("Database initialized with vector extension, memories table, links table, and HNSW index.");
     } catch (err) {
         console.error("Failed to initialize database:", err);
         throw err;
