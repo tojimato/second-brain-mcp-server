@@ -149,6 +149,12 @@ server.registerTool("ingest_file", {
     const content = fs.readFileSync(fullPath, 'utf8');
     const source = path.basename(fullPath);
 
+    // Sync Logic: Delete old memories from this source for this project before re-ingesting
+    await pool.query(
+        'DELETE FROM memories WHERE project_name = $1 AND source = $2',
+        [project_name, source]
+    );
+
     const chunks = chunkText(content);
     const ids = [];
     for (const chunk of chunks) {
