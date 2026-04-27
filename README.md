@@ -98,6 +98,8 @@ Bu sunucu aşağıdaki araçları sağlar:
 
 4.  **`get_recent_context`**: Bir projedeki son eklenen kayıtları getirir.
 
+5.  **`get_graph_connections`**: Belirli bir konsepte yapılan açık referansları ([[concept]]) ve "backlink"leri bulur. Çift yönlü bağlantı (bidirectional linking) sağlar.
+
 ### Claude Desktop Entegrasyonu
 
 Claude Desktop'ta kullanmak için `claude_desktop_config.json` dosyanıza şu eklemeyi yapın:

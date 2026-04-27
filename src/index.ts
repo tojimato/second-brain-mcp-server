@@ -105,6 +105,27 @@ server.registerTool("ingest_file", {
     };
 });
 
+server.registerTool("get_graph_connections", {
+    description: "Find all memories that explicitly link to a specific concept using [[concept_name]] syntax (backlinks).",
+    inputSchema: {
+        project_name: z.string().describe("The target project"),
+        concept_name: z.string().describe("The name of the concept to find connections for")
+    }
+}, async ({ project_name, concept_name }) => {
+    const pattern = `%[[${concept_name}]]%`;
+    const result = await pool.query(
+        `SELECT id, content, memory_type, created_at
+         FROM memories
+         WHERE project_name = $1 AND content LIKE $2
+         ORDER BY created_at DESC`,
+        [project_name, pattern]
+    );
+
+    return {
+        content: [{ type: "text", text: JSON.stringify(result.rows, null, 2) }]
+    };
+});
+
 async function main() {
     console.error("Initializing Second Brain database...");
     await initDb();
