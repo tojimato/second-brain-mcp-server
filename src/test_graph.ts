@@ -53,6 +53,8 @@ async function testGraph() {
     } catch (err) {
         console.error("Test error:", err);
     } finally {
+        console.log("Cleaning up test data...");
+        await pool.query('DELETE FROM memories WHERE project_name = $1', ["GraphTest"]);
         await pool.end();
     }
 }

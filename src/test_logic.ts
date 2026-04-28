@@ -38,6 +38,8 @@ async function test() {
     } catch (err) {
         console.error("Test FAILED:", err);
     } finally {
+        console.log("Cleaning up test data...");
+        await pool.query('DELETE FROM memories WHERE project_name = $1', ["TestProject"]);
         await pool.end();
     }
 }
