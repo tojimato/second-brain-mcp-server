@@ -5,8 +5,8 @@ dotenv.config();
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://localhost:11434';
 
-// You can change the model via environment variable. 'nomic-embed-text' is highly recommended for semantic search.
-const EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
+// You can change the model via environment variable. 'bge-m3' is highly recommended for semantic search.
+const EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || 'bge-m3';
 
 const ollama = new Ollama({ host: OLLAMA_HOST });
 

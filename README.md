@@ -41,12 +41,12 @@ A Model Context Protocol (MCP) server that provides a persistent, semantically s
    docker-compose -f docker-compose.full.yml up -d
    ```
    > [!NOTE]
-   > When using `docker-compose.full.yml`, the `ollama` service will automatically pull the `nomic-embed-text` model. This may take a few minutes depending on your internet speed.
+   > When using `docker-compose.full.yml`, the `ollama` service will automatically pull the `bge-m3` model. This may take a few minutes depending on your internet speed.
 
 4. **Prepare Ollama Model (Manual):**
    If not using the full docker setup, pull the embedding model manually:
    ```bash
-   ollama pull nomic-embed-text
+   ollama pull bge-m3
    ```
 
 ## Configuration (.env)
@@ -59,7 +59,7 @@ DB_PASSWORD=password
 DB_NAME=second_brain
 DB_HOST=localhost
 DB_PORT=5433
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+OLLAMA_EMBEDDING_MODEL=bge-m3
 OLLAMA_HOST=http://localhost:11434
 ```
 
@@ -105,7 +105,7 @@ Add the following to your `claude_desktop_config.json`:
         "DB_NAME": "second_brain",
         "DB_HOST": "localhost",
         "DB_PORT": "5433",
-        "OLLAMA_EMBEDDING_MODEL": "nomic-embed-text",
+        "OLLAMA_EMBEDDING_MODEL": "bge-m3",
         "OLLAMA_HOST": "http://localhost:11434"
       }
     }

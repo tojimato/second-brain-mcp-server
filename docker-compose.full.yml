@@ -19,7 +19,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     entrypoint: /bin/sh
-    command: -c "ollama serve & sleep 10 && ollama pull nomic-embed-text && wait"
+    command: -c "ollama serve & sleep 10 && ollama pull bge-m3 && wait"
 
 volumes:
   pgdata:
