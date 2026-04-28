@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -6,6 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { initDb } from './db';
 import { registerMemoryTools } from './tools/memoryTools';
 import { registerGraphTools } from './tools/graphTools';
+import { runSetup } from './utils/setup';
 
 /**
  * MCP Server for Second Brain
@@ -23,6 +25,11 @@ registerMemoryTools(server);
 registerGraphTools(server);
 
 async function main() {
+    if (process.argv.includes('setup')) {
+        await runSetup();
+        return;
+    }
+
     console.error("Starting Second Brain MCP Server...");
     await initDb();
     
