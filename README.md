@@ -5,6 +5,7 @@ A Model Context Protocol (MCP) server that provides a persistent, semantically s
 ## Features
 
 - **Semantic Search:** Search stored knowledge based on meaning, not just keywords.
+- **Graph-Enriched Results:** Search results automatically include linked concepts (connections), enabling autonomous context discovery.
 - **Bidirectional Linking:** Automatic extraction of `[[concept]]` references to build a knowledge graph.
 - **Intelligent Chunking:** Automatically splits large files into manageable chunks to optimize context window and token usage.
 - **High Performance:** Uses HNSW indexing for millisecond-level vector similarity retrieval.
@@ -85,11 +86,12 @@ npm run test:perf
 
 1.  **`initialize_workspace`**: Returns the bootstrap instructions to transform any workspace into a Second Brain.
 2.  **`create_memory`**: Stores knowledge. Large content is automatically chunked.
-3.  **`search_memory`**: Semantic search with optional `min_similarity` threshold.
+3.  **`search_memory`**: Semantic search with **Graph-Enriched Results** (includes linked connections in the output).
 4.  **`ingest_file`**: Reads a local file and ingests it into the brain.
-5.  **`get_recent_context`**: Fetches the most recently added records.
-6.  **`get_graph_connections`**: Finds "backlinks" for a specific concept using the bidirectional links table.
-7.  **`get_graph_visual`**: Generates a Mermaid graph visualization of memories and their relationships.
+5.  **`get_recent_context`**: Fetches recent records with linked connections.
+6.  **`delete_memory`**: Delete specific memories by ID or all memories from a specific source.
+7.  **`get_graph_connections`**: Finds "backlinks" for a specific concept using the bidirectional links table.
+8.  **`get_graph_visual`**: Generates a Mermaid graph visualization of memories and their relationships.
 
 ### Claude Desktop Integration
 
