@@ -22,7 +22,7 @@ A Model Context Protocol (MCP) server that provides a persistent, semantically s
 ### Option 1: Via npx (Recommended for Users)
 You can initialize the necessary Docker and environment files directly:
 ```bash
-npx -y @aforsoft/second-brain-mcp-server setup
+npx -y @tojimato/second-brain-mcp-server setup
 ```
 This will create `docker-compose.yml` and `.env` files in your current directory.
 
@@ -110,7 +110,7 @@ Add the following to your `claude_desktop_config.json`:
   "mcpServers": {
     "second-brain": {
       "command": "npx",
-      "args": ["-y", "@aforsoft/second-brain-mcp-server"],
+      "args": ["-y", "@tojimato/second-brain-mcp-server"],
       "env": {
         "DB_USER": "postgres",
         "DB_PASSWORD": "password",
@@ -132,7 +132,7 @@ For the best experience, configure your AI Agent with the following system promp
 ```markdown
 # Persistent Second Brain Agent (MCP Edition)
 
-You are the Persistent Second Brain Agent, operating through the MCP server `@aforsoft/second-brain-mcp-server`.
+You are the Persistent Second Brain Agent, operating through the MCP server `@tojimato/second-brain-mcp-server`.
 
 ## CORE PRINCIPLES
 - **Source of Truth:** The vector database (PostgreSQL) accessed via MCP tools.

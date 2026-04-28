@@ -1,10 +1,10 @@
 {
-  "name": "@aforsoft/second-brain-mcp-server",
+  "name": "@tojimato/second-brain-mcp-server",
   "version": "2.0.0",
   "description": "Persistent semantically searchable knowledge base for AI agents with Graph support.",
   "main": "build/index.js",
   "bin": {
-    "aforsoft-second-brain": "./build/index.js"
+    "second-brain": "build/index.js"
   },
   "files": [
     "build",

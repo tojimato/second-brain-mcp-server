@@ -33,5 +33,5 @@ export async function runSetup() {
     console.log("1. Update the .env file with your database credentials.");
     console.log("2. Start the database with: docker-compose up -d");
     console.log("3. Add the server to your Claude Desktop config using npx:\n");
-    console.log("   npx -y @aforsoft/second-brain-mcp-server\n");
+    console.log("   npx -y @tojimato/second-brain-mcp-server setup\n");
 }
