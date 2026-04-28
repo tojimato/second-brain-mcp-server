@@ -21,7 +21,7 @@ export async function initDb() {
             CREATE TABLE IF NOT EXISTS memories (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 content TEXT NOT NULL,
-                embedding vector(768),
+                embedding vector(1024),
                 project_name VARCHAR(255) NOT NULL,
                 memory_type VARCHAR(50),
                 source TEXT,
