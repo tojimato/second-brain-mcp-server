@@ -35,9 +35,6 @@ You MUST organize all knowledge into the following structure and map them to the
    - Path: \`wiki/summaries/\`
    - Content: High-level overviews of projects, modules, or long documents.
    - **Format**: Strictly Markdown.
-4. **Index**
-   - Path: \`wiki/index.md\`
-   - Content: The central entry point for the knowledge base.
 
 ## Phase 2: Transformation & Ingestion Rules
 1. **Raw Knowledge vs. Processed Brain**:
