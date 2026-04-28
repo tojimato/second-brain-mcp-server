@@ -10,15 +10,15 @@ import * as path from 'path';
 
 export function registerMemoryTools(server: McpServer) {
     server.registerTool("initialize_workspace", {
-        description: "Returns the Universal Second Brain Initialization Skill instructions to the agent to start bootstrapping a workspace.",
+        description: "Returns the Second Brain Initialization Skill instructions to the agent to start bootstrapping a workspace with strict structure.",
         inputSchema: {
             project_name: z.string().describe("The name of the project to initialize"),
         }
     }, async ({ project_name }) => {
         return {
-            content: [{ 
-                type: "text", 
-                text: `You are now in "Second Brain Bootstrap Specialist" mode. Project: ${project_name}\n\nPlease follow these instructions to transform this workspace into a Second Brain:\n\n` + INITIALIZATION_SKILL_PROMPT 
+            content: [{
+                type: "text",
+                text: `You are now in "Second Brain Bootstrap Specialist" mode. Project: ${project_name}\n\nPlease follow these instructions to transform this workspace into a Second Brain:\n\n` + INITIALIZATION_SKILL_PROMPT
             }]
         };
     });
@@ -34,7 +34,7 @@ export function registerMemoryTools(server: McpServer) {
     }, async ({ project_name, query, limit, min_similarity }) => {
         const queryEmbedding = await getEmbedding(query);
         const vectorString = `[${queryEmbedding.join(',')}]`;
-        
+
         const result = await pool.query(
             `SELECT id, content, memory_type, source, created_at, 1 - (embedding <=> $1::vector) as similarity
              FROM memories
@@ -54,7 +54,7 @@ export function registerMemoryTools(server: McpServer) {
         inputSchema: {
             project_name: z.string().describe("The target project"),
             content: z.string().describe("The knowledge content to store"),
-            memory_type: z.string().optional().default('general').describe("Category: 'architecture', 'decision', 'sop', 'bug_pattern', 'concept', 'summary'"),
+            memory_type: z.string().optional().default('concept').describe("Mandatory categories: 'system', 'concept', 'summary'"),
             source: z.string().optional().describe("Optional source tag (URL, filename, etc.)")
         }
     }, async ({ project_name, content, memory_type, source }) => {
@@ -91,12 +91,45 @@ export function registerMemoryTools(server: McpServer) {
         };
     });
 
+    server.registerTool("delete_memory", {
+        description: "Delete specific memories or all memories from a source.",
+        inputSchema: {
+            project_name: z.string().describe("The target project"),
+            id: z.string().optional().describe("Specific memory ID to delete"),
+            source: z.string().optional().describe("Delete all memories associated with this source (e.g., filename)")
+        }
+    }, async ({ project_name, id, source }) => {
+        if (!id && !source) {
+            return {
+                content: [{ type: "text", text: "Error: You must provide either an ID or a source to delete." }],
+                isError: true
+            };
+        }
+
+        let result;
+        if (id) {
+            result = await pool.query(
+                'DELETE FROM memories WHERE id = $1 AND project_name = $2',
+                [id, project_name]
+            );
+        } else {
+            result = await pool.query(
+                'DELETE FROM memories WHERE source = $1 AND project_name = $2',
+                [source, project_name]
+            );
+        }
+
+        return {
+            content: [{ type: "text", text: `Deleted ${result.rowCount} record(s) from project '${project_name}'.` }]
+        };
+    });
+
     server.registerTool("ingest_file", {
         description: "Read a local file and ingest its content. Large files are automatically chunked.",
         inputSchema: {
             project_name: z.string().describe("The target project"),
             file_path: z.string().describe("Absolute path to the file to ingest"),
-            memory_type: z.string().optional().default('file_ingest').describe("Type of memory")
+            memory_type: z.string().optional().default('file_ingest').describe("Type of memory. For raw data, use 'file_ingest'.")
         }
     }, async ({ project_name, file_path, memory_type }) => {
         const fullPath = path.resolve(file_path);
