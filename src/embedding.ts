@@ -10,12 +10,20 @@ const EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || 'bge-m3';
 
 const ollama = new Ollama({ host: OLLAMA_HOST });
 
+let dimensionVerified = false;
+
 export async function getEmbedding(text: string): Promise<number[]> {
     try {
         const response = await ollama.embeddings({
             model: EMBEDDING_MODEL,
             prompt: text,
         });
+
+        if (!dimensionVerified) {
+            console.error(`[Embedding] Model: ${EMBEDDING_MODEL}, Dimension: ${response.embedding.length}`);
+            dimensionVerified = true;
+        }
+
         return response.embedding;
     } catch (err) {
         console.error("Failed to generate embedding with Ollama:", err);
