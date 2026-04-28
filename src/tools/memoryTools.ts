@@ -1,10 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { pool } from '../db.js';
-import { getEmbedding } from '../embedding.js';
-import { chunkText } from '../utils/text.js';
-import { saveMemory } from '../services/memoryService.js';
-import { INITIALIZATION_SKILL_PROMPT } from '../utils/initializationPrompt.js';
+import { pool } from '../db';
+import { getEmbedding } from '../embedding';
+import { chunkText } from '../utils/text';
+import { saveMemory } from '../services/memoryService';
+import { INITIALIZATION_SKILL_PROMPT } from '../utils/initializationPrompt';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -36,10 +36,11 @@ export function registerMemoryTools(server: McpServer) {
         const vectorString = `[${queryEmbedding.join(',')}]`;
 
         const result = await pool.query(
-            `SELECT id, content, memory_type, source, created_at, 1 - (embedding <=> $1::vector) as similarity
-             FROM memories
-             WHERE project_name = $2 AND (1 - (embedding <=> $1::vector)) >= $4
-             ORDER BY embedding <=> $1::vector
+            `SELECT m.id, m.content, m.memory_type, m.source, m.created_at, 1 - (m.embedding <=> $1::vector) as similarity,
+                    COALESCE((SELECT array_agg(target_concept) FROM memory_links WHERE source_id = m.id), '{}') as connections
+             FROM memories m
+             WHERE m.project_name = $2 AND (1 - (m.embedding <=> $1::vector)) >= $4
+             ORDER BY m.embedding <=> $1::vector
              LIMIT $3`,
             [vectorString, project_name, limit, min_similarity]
         );
@@ -78,10 +79,11 @@ export function registerMemoryTools(server: McpServer) {
         }
     }, async ({ project_name, limit }) => {
         const result = await pool.query(
-            `SELECT id, content, memory_type, source, created_at
-             FROM memories
-             WHERE project_name = $1
-             ORDER BY created_at DESC
+            `SELECT m.id, m.content, m.memory_type, m.source, m.created_at,
+                    COALESCE((SELECT array_agg(target_concept) FROM memory_links WHERE source_id = m.id), '{}') as connections
+             FROM memories m
+             WHERE m.project_name = $1
+             ORDER BY m.created_at DESC
              LIMIT $2`,
             [project_name, limit]
         );

@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { pool } from '../db.js';
+import { pool } from '../db';
 
 export function registerGraphTools(server: McpServer) {
     server.registerTool("get_graph_connections", {

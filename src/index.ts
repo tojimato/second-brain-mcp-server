@@ -3,9 +3,9 @@ dotenv.config();
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { initDb } from './db.js';
-import { registerMemoryTools } from './tools/memoryTools.js';
-import { registerGraphTools } from './tools/graphTools.js';
+import { initDb } from './db';
+import { registerMemoryTools } from './tools/memoryTools';
+import { registerGraphTools } from './tools/graphTools';
 
 /**
  * MCP Server for Second Brain

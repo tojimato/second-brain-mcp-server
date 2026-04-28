@@ -1,6 +1,6 @@
-import { pool } from '../db.js';
-import { getEmbedding } from '../embedding.js';
-import { extractLinks } from '../utils/text.js';
+import { pool } from '../db';
+import { getEmbedding } from '../embedding';
+import { extractLinks } from '../utils/text';
 
 /**
  * Saves a single memory chunk and its links to the database.
