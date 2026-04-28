@@ -83,11 +83,13 @@ npm run test:perf
 
 ### MCP Tools
 
-1.  **`create_memory`**: Stores knowledge. Large content is automatically chunked.
-2.  **`search_memory`**: Semantic search with optional `min_similarity` threshold.
-3.  **`ingest_file`**: Reads a local file and ingests it into the brain.
-4.  **`get_recent_context`**: Fetches the most recently added records.
-5.  **`get_graph_connections`**: Finds "backlinks" for a specific concept using the bidirectional links table.
+1.  **`initialize_workspace`**: Returns the bootstrap instructions to transform any workspace into a Second Brain.
+2.  **`create_memory`**: Stores knowledge. Large content is automatically chunked.
+3.  **`search_memory`**: Semantic search with optional `min_similarity` threshold.
+4.  **`ingest_file`**: Reads a local file and ingests it into the brain.
+5.  **`get_recent_context`**: Fetches the most recently added records.
+6.  **`get_graph_connections`**: Finds "backlinks" for a specific concept using the bidirectional links table.
+7.  **`get_graph_visual`**: Generates a Mermaid graph visualization of memories and their relationships.
 
 ### Claude Desktop Integration
 

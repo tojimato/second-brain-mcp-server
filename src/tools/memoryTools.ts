@@ -4,10 +4,25 @@ import { pool } from '../db.js';
 import { getEmbedding } from '../embedding.js';
 import { chunkText } from '../utils/text.js';
 import { saveMemory } from '../services/memoryService.js';
+import { INITIALIZATION_SKILL_PROMPT } from '../utils/initializationPrompt.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
 export function registerMemoryTools(server: McpServer) {
+    server.registerTool("initialize_workspace", {
+        description: "Returns the Universal Second Brain Initialization Skill instructions to the agent to start bootstrapping a workspace.",
+        inputSchema: {
+            project_name: z.string().describe("The name of the project to initialize"),
+        }
+    }, async ({ project_name }) => {
+        return {
+            content: [{ 
+                type: "text", 
+                text: `You are now in "Second Brain Bootstrap Specialist" mode. Project: ${project_name}\n\nPlease follow these instructions to transform this workspace into a Second Brain:\n\n` + INITIALIZATION_SKILL_PROMPT 
+            }]
+        };
+    });
+
     server.registerTool("search_memory", {
         description: "Search for relevant memories using semantic search with optional similarity threshold.",
         inputSchema: {
