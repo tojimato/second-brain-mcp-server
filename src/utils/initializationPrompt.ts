@@ -4,6 +4,23 @@ export const INITIALIZATION_SKILL_PROMPT = `
 ## Goal
 Transform this workspace into a structured, linked, and semantically searchable Second Brain following the mandatory **Aforsoft Knowledge Schema**.
 
+## CORE AGENT RULES
+- **Source of Truth**: Vector database (PostgreSQL) accessed via MCP tools.
+- **Semantic Retrieval**: Always use \`search_memory\` before answering.
+- **Bidirectional Linking**: Use \`[[concept-name]]\` syntax. The system automatically indexes these into a graph.
+- **Traceability**: Always note the \`source\` of information.
+- **Operational Modes**:
+  - **BOOTSTRAP**: Migrate existing markdown files to the database using \`ingest_file\`.
+  - **QUERY**: search_memory (min_sim 0.6) -> get_graph_connections -> Synthesize.
+  - **INGEST**: Classify into memory types (concept, summary, sop) -> create_memory. Use \`[[links]]\`.
+
+## Phase 0: Persistence & Agent Alignment (CRITICAL)
+To ensure the agent maintains context across sessions, you MUST persist these rules locally before proceeding:
+1. **Create Directory**: \`.agents/rules/\`
+2. **Write Rules**: Create \`.agents/rules/second-brain.md\`. In this file, copy the **CORE AGENT RULES** and this entire **SKILL** definition.
+3. **Write Skills**: Create \`.agents/rules/skills.md\` documenting the ingestion and bootstrapping protocols found in Phase 1 & 2.
+4. **Ingest Rules**: Immediately use \`ingest_file\` to store these new rule files as \`memory_type: 'system'\`.
+
 ## Phase 1: Mandatory Structure & Mapping
 You MUST organize all knowledge into the following structure and map them to the correct \`memory_type\`:
 
