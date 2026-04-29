@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { pool } from '../db';
 import { getEmbedding } from '../embedding';
 import { chunkText } from '../utils/text';
-import { saveMemory } from '../services/memoryService';
+import { saveMemory, ingestFile } from '../services/memoryService';
 import { INITIALIZATION_SKILL_PROMPT } from '../utils/initializationPrompt';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -127,32 +127,25 @@ export function registerMemoryTools(server: McpServer) {
     });
 
     server.registerTool("ingest_file", {
-        description: "Read a local file and ingest its content. Large files are automatically chunked.",
+        description: "Read a local file and ingest its content. Supports text, PDF, DOCX, XLSX, and more. Large files are automatically chunked.",
         inputSchema: {
             project_name: z.string().describe("The target project"),
             file_path: z.string().describe("Absolute path to the file to ingest"),
             memory_type: z.string().optional().default('file_ingest').describe("Type of memory. For raw data, use 'file_ingest'.")
         }
     }, async ({ project_name, file_path, memory_type }) => {
-        const fullPath = path.resolve(file_path);
-        const content = fs.readFileSync(fullPath, 'utf8');
-        const source = path.basename(fullPath);
-
-        // Sync Logic: Delete old memories from this source for this project before re-ingesting
-        await pool.query(
-            'DELETE FROM memories WHERE project_name = $1 AND source = $2',
-            [project_name, source]
-        );
-
-        const chunks = chunkText(content);
-        const ids = [];
-        for (const chunk of chunks) {
-            const id = await saveMemory(project_name, chunk, memory_type, source);
-            ids.push(id);
+        try {
+            const { source, chunksCount } = await ingestFile(project_name, file_path, memory_type);
+            return {
+                content: [{ type: "text", text: `File ingested successfully. ${chunksCount} chunk(s) stored. Source: ${source}` }]
+            };
+        } catch (error) {
+            return {
+                content: [{ type: "text", text: `Error ingesting file: ${error instanceof Error ? error.message : String(error)}` }],
+                isError: true
+            };
         }
-
-        return {
-            content: [{ type: "text", text: `File ingested successfully. ${chunks.length} chunk(s) stored. Source: ${source}` }]
-        };
     });
 }
+
+

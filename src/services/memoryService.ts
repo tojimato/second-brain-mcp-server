@@ -1,6 +1,11 @@
 import { pool } from '../db';
 import { getEmbedding } from '../embedding';
-import { extractLinks } from '../utils/text';
+import { extractLinks, chunkText } from '../utils/text';
+import * as fs from 'fs';
+import * as path from 'path';
+import { getTextExtractor } from 'office-text-extractor';
+
+const extractor = getTextExtractor();
 
 /**
  * Saves a single memory chunk and its links to the database.
@@ -25,3 +30,44 @@ export async function saveMemory(project_name: string, content: string, memory_t
     }
     return memoryId;
 }
+
+/**
+ * Ingests a file (text or binary) into the memory system.
+ */
+export async function ingestFile(project_name: string, file_path: string, memory_type: string = 'file_ingest') {
+    const fullPath = path.resolve(file_path);
+    const ext = path.extname(fullPath).toLowerCase();
+    const source = path.basename(fullPath);
+
+    let content: string;
+    
+    // Define supported formats for office-text-extractor
+    const binaryFormats = ['.pdf', '.docx', '.xlsx', '.pptx', '.odt', '.ods', '.odp'];
+    
+    if (binaryFormats.includes(ext)) {
+        content = await extractor.extractText({ input: fullPath, type: 'file' });
+    } else {
+
+        content = fs.readFileSync(fullPath, 'utf8');
+    }
+
+    if (!content || content.trim().length === 0) {
+        throw new Error(`No text content could be extracted from ${source}.`);
+    }
+
+    // Sync Logic: Delete old memories from this source for this project before re-ingesting
+    await pool.query(
+        'DELETE FROM memories WHERE project_name = $1 AND source = $2',
+        [project_name, source]
+    );
+
+    const chunks = chunkText(content);
+    const ids = [];
+    for (const chunk of chunks) {
+        const id = await saveMemory(project_name, chunk, memory_type, source);
+        ids.push(id);
+    }
+
+    return { source, chunksCount: chunks.length, ids };
+}
+
