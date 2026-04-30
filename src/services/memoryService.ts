@@ -1,6 +1,6 @@
 import { pool } from '../db';
 import { getEmbedding } from '../embedding';
-import { extractLinks, chunkText } from '../utils/text';
+import { extractLinks, chunkTextRecursive, cleanHtml, detectFormat } from '../utils/text';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getTextExtractor } from 'office-text-extractor';
@@ -40,15 +40,20 @@ export async function ingestFile(project_name: string, file_path: string, memory
     const source = path.basename(fullPath);
 
     let content: string;
+    const format = detectFormat(source);
     
     // Define supported formats for office-text-extractor
-    const binaryFormats = ['.pdf', '.docx', '.xlsx', '.pptx', '.odt', '.ods', '.odp'];
+    const binaryFormats = ['.pdf', '.docx', '.xlsx', '.pptx', '.odt', '.ods', '.odp', '.rtf', '.epub', '.csv'];
     
     if (binaryFormats.includes(ext)) {
         content = await extractor.extractText({ input: fullPath, type: 'file' });
     } else {
-
         content = fs.readFileSync(fullPath, 'utf8');
+        
+        // Format-specific preprocessing
+        if (format === 'html') {
+            content = cleanHtml(content);
+        }
     }
 
     if (!content || content.trim().length === 0) {
@@ -61,7 +66,9 @@ export async function ingestFile(project_name: string, file_path: string, memory
         [project_name, source]
     );
 
-    const chunks = chunkText(content);
+    // Use recursive splitting with format awareness
+    const chunks = chunkTextRecursive(content, 1500, 200, format);
+    
     const ids = [];
     for (const chunk of chunks) {
         const id = await saveMemory(project_name, chunk, memory_type, source);
