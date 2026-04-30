@@ -11,7 +11,18 @@ export function registerGraphTools(server: McpServer) {
         }
     }, async ({ project_name, concept_name }) => {
         const result = await pool.query(
-            `SELECT m.id, m.content, m.memory_type, m.source, m.created_at
+            `SELECT m.id, m.content, m.memory_type, m.source, m.created_at,
+                    COALESCE((
+                        SELECT array_agg(DISTINCT ml.target_concept)
+                        FROM memory_links ml
+                        INNER JOIN memories msrc ON msrc.id = ml.source_id
+                        WHERE msrc.project_name = $1
+                          AND (
+                              (m.source IS NOT NULL AND msrc.source = m.source)
+                              OR
+                              (m.source IS NULL AND msrc.id = m.id)
+                          )
+                    ), '{}') as connections
              FROM memories m
              JOIN memory_links l ON m.id = l.source_id
              WHERE m.project_name = $1 AND l.target_concept = $2

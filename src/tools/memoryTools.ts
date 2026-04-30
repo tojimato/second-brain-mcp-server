@@ -37,7 +37,17 @@ export function registerMemoryTools(server: McpServer) {
 
         const result = await pool.query(
             `SELECT m.id, m.content, m.memory_type, m.source, m.created_at, 1 - (m.embedding <=> $1::vector) as similarity,
-                    COALESCE((SELECT array_agg(target_concept) FROM memory_links WHERE source_id = m.id), '{}') as connections
+                    COALESCE((
+                        SELECT array_agg(DISTINCT ml.target_concept)
+                        FROM memory_links ml
+                        INNER JOIN memories msrc ON msrc.id = ml.source_id
+                        WHERE msrc.project_name = $2
+                          AND (
+                              (m.source IS NOT NULL AND msrc.source = m.source)
+                              OR
+                              (m.source IS NULL AND msrc.id = m.id)
+                          )
+                    ), '{}') as connections
              FROM memories m
              WHERE m.project_name = $2 AND (1 - (m.embedding <=> $1::vector)) >= $4
              ORDER BY m.embedding <=> $1::vector
@@ -80,7 +90,17 @@ export function registerMemoryTools(server: McpServer) {
     }, async ({ project_name, limit }) => {
         const result = await pool.query(
             `SELECT m.id, m.content, m.memory_type, m.source, m.created_at,
-                    COALESCE((SELECT array_agg(target_concept) FROM memory_links WHERE source_id = m.id), '{}') as connections
+                    COALESCE((
+                        SELECT array_agg(DISTINCT ml.target_concept)
+                        FROM memory_links ml
+                        INNER JOIN memories msrc ON msrc.id = ml.source_id
+                        WHERE msrc.project_name = $1
+                          AND (
+                              (m.source IS NOT NULL AND msrc.source = m.source)
+                              OR
+                              (m.source IS NULL AND msrc.id = m.id)
+                          )
+                    ), '{}') as connections
              FROM memories m
              WHERE m.project_name = $1
              ORDER BY m.created_at DESC
