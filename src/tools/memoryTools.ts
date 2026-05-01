@@ -47,7 +47,8 @@ export function registerMemoryTools(server: McpServer) {
                               OR
                               (m.source IS NULL AND msrc.id = m.id)
                           )
-                    ), '{}') as connections
+                    ), '{}') as connections,
+                    (SELECT COUNT(*) FROM memories m2 WHERE m2.project_name = $2 AND m2.source = m.source AND m.source IS NOT NULL) as total_chunks_in_source
              FROM memories m
              WHERE m.project_name = $2 AND (1 - (m.embedding <=> $1::vector)) >= $4
              ORDER BY m.embedding <=> $1::vector
@@ -106,6 +107,26 @@ export function registerMemoryTools(server: McpServer) {
              ORDER BY m.created_at DESC
              LIMIT $2`,
             [project_name, limit]
+        );
+
+        return {
+            content: [{ type: "text", text: JSON.stringify(result.rows, null, 2) }]
+        };
+    });
+
+    server.registerTool("get_memories_by_source", {
+        description: "Fetch all memory chunks belonging to a specific source (e.g., a file) to get full context.",
+        inputSchema: {
+            project_name: z.string().describe("The target project"),
+            source: z.string().describe("The source name (e.g., filename)")
+        }
+    }, async ({ project_name, source }) => {
+        const result = await pool.query(
+            `SELECT id, content, memory_type, created_at 
+             FROM memories 
+             WHERE project_name = $1 AND source = $2 
+             ORDER BY created_at ASC`,
+            [project_name, source]
         );
 
         return {

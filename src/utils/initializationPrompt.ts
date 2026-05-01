@@ -6,12 +6,12 @@ Transform this workspace into a structured, linked, and semantically searchable 
 
 ## CORE AGENT RULES
 - **Source of Truth**: Vector database (PostgreSQL) accessed via MCP tools.
-- **Semantic Retrieval**: Always use \`search_memory\` before answering.
+- **Semantic Retrieval**: Always use \`search_memory\` before answering. If a result indicates \`total_chunks_in_source > 1\`, use \`get_memories_by_source\` to retrieve the full context.
 - **Bidirectional Linking**: Use \`[[concept-name]]\` syntax. The system automatically indexes these into a graph.
 - **Traceability**: Always note the \`source\` of information.
 - **Operational Modes**:
   - **BOOTSTRAP**: Migrate existing markdown files to the database using \`ingest_file\`.
-  - **QUERY**: search_memory (min_sim 0.6) -> get_graph_connections -> Synthesize.
+  - **QUERY**: search_memory -> check context (get_memories_by_source) -> get_graph_connections -> Synthesize.
   - **INGEST**: Classify into memory types (concept, summary, sop) -> create_memory. Use \`[[links]]\`.
 
 ## Phase 0: Persistence & Agent Alignment (CRITICAL)
