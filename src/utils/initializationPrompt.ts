@@ -15,11 +15,12 @@ Transform this workspace into a structured, linked, and semantically searchable 
   - **INGEST**: Classify into memory types (concept, summary, sop) -> create_memory. Use \`[[links]]\`.
 
 ## Phase 0: Persistence & Agent Alignment (CRITICAL)
-To ensure the agent maintains context across sessions, you MUST persist these rules locally before proceeding:
+To ensure the agent maintains context across sessions and ALWAYS uses the same project name, you MUST persist these rules locally:
 1. **Create Directory**: \`.agents/rules/\`
-2. **Write Rules**: Create \`.agents/rules/second-brain.md\`. In this file, copy the **CORE AGENT RULES** and this entire **SKILL** definition.
-3. **Write Skills**: Create \`.agents/rules/skills.md\` documenting the ingestion and bootstrapping protocols found in Phase 1 & 2.
-4. **Ingest Rules**: Immediately use \`ingest_file\` to store these new rule files as \`memory_type: 'system'\`.
+2. **Write Rules**: Create a single file: \`.agents/rules/second-brain.md\`. In this file:
+   - Explicitly write: \`PROJECT_NAME: <The exact project name provided in the initialization>\`. You MUST always use this exact project name for all MCP tool calls.
+   - Copy the **CORE AGENT RULES** and document the entire ingestion/bootstrapping protocols found in Phase 1 & 2.
+3. **Ingest Rules**: Immediately use \`ingest_file\` to store this new rule file as \`memory_type: 'system'\`.
 
 ## Phase 1: Mandatory Structure & Mapping
 You MUST organize all knowledge into the following structure and map them to the correct \`memory_type\`:
