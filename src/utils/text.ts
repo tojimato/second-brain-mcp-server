@@ -179,6 +179,11 @@ export function chunkText(text: string, size: number = 1500, overlap: number = 2
     return chunkTextRecursive(text, size, overlap, 'text');
 }
 
+export const IGNORED_LINK_PLACEHOLDERS = [
+    'concept-name',
+    'links'
+];
+
 /**
  * Extracts links in the format [[concept]] from text.
  */
@@ -187,7 +192,10 @@ export function extractLinks(text: string): string[] {
     const links = new Set<string>();
     let match;
     while ((match = regex.exec(text)) !== null) {
-        links.add(match[1].trim());
+        const link = match[1].trim();
+        if (!IGNORED_LINK_PLACEHOLDERS.includes(link)) {
+            links.add(link);
+        }
     }
     return Array.from(links);
 }
