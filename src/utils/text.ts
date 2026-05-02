@@ -181,7 +181,8 @@ export function chunkText(text: string, size: number = 1500, overlap: number = 2
 
 export const IGNORED_LINK_PLACEHOLDERS = [
     'concept-name',
-    'links'
+    'links',
+    'concept-links'
 ];
 
 /**
